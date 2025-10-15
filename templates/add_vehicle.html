@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Add Vehicle</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    />
+  </head>
+  <body class="bg-light">
+    <div class="container mt-5">
+      <h2>Add New Vehicle</h2>
+      <form method="POST">
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <input
+              type="text"
+              name="vehicle_id"
+              class="form-control"
+              placeholder="Vehicle ID"
+              required
+            />
+          </div>
+          <div class="col-md-6 mb-3">
+            <input
+              type="text"
+              name="type"
+              class="form-control"
+              placeholder="Type (SUV/Sedan etc.)"
+              required
+            />
+          </div>
+          <div class="col-md-6 mb-3">
+            <input
+              type="text"
+              name="make"
+              class="form-control"
+              placeholder="Make"
+              required
+            />
+          </div>
+          <div class="col-md-6 mb-3">
+            <input
+              type="text"
+              name="model"
+              class="form-control"
+              placeholder="Model"
+              required
+            />
+          </div>
+          <div class="col-md-4 mb-3">
+            <input
+              type="number"
+              name="year"
+              class="form-control"
+              placeholder="Year"
+              required
+            />
+          </div>
+          <div class="col-md-4 mb-3">
+            <input
+              type="text"
+              name="color"
+              class="form-control"
+              placeholder="Color"
+              required
+            />
+          </div>
+          <div class="col-md-4 mb-3">
+            <input
+              type="number"
+              name="seating_capacity"
+              class="form-control"
+              placeholder="Seating Capacity"
+              required
+            />
+          </div>
+          <div class="col-md-6 mb-3">
+            <input
+              type="number"
+              name="rent_per_day"
+              class="form-control"
+              placeholder="Rent per day"
+              required
+            />
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Add Vehicle</button>
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary"
+          >Cancel</a
+        >
+      </form>
+    </div>
+  </body>
+</html>
