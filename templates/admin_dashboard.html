@@ -4,205 +4,213 @@
     <meta charset="UTF-8">
     <title>Admin Dashboard</title>
 
+    <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+
     <style>
         body {
-            padding: 20px;
+            padding: 30px;
+            background-color: #f8f9fa;
         }
-        h2, h3 {
+
+        h2, h3, h5 {
             margin-bottom: 20px;
+            font-weight: 600;
         }
-        table {
-            margin-bottom: 30px;
+
+        .card {
+            margin-bottom: 40px;
         }
-        .arrow-down {
-            font-size: 30px;
-            text-align: center;
-            cursor: pointer;
-            color: #007bff;
-        }
-        .arrow-down:hover {
-            color: #0056b3;
-        }
+
         .form-inline .form-control {
             margin-right: 10px;
         }
+
         .force-btn {
             margin-top: 5px;
+        }
+
+        .table th, .table td {
+            vertical-align: middle;
+        }
+
+        .btn {
+            white-space: nowrap;
+        }
+
+        .section-header {
+            border-left: 5px solid #007bff;
+            padding-left: 10px;
+            margin-bottom: 20px;
         }
     </style>
 </head>
 <body>
 
-    <h2>Admin Dashboard</h2>
-    <form action="{{ url_for('logout') }}" method="POST">
-        <button type="submit" class="btn btn-danger">Logout</button>
-    </form>
-
-    <!-- Filter Dropdown -->
-    <form method="GET" action="{{ url_for('admin_dashboard') }}" class="form-inline mb-3">
-        <label for="filter" class="mr-2">Filter by Type:</label>
-        <select name="filter" class="form-control" onchange="this.form.submit()">
-            <option value="all" {% if selected_filter == 'all' %}selected{% endif %}>All</option>
-            <option value="Sedan" {% if selected_filter == 'Sedan' %}selected{% endif %}>Sedan</option>
-            <option value="SUV" {% if selected_filter == 'SUV' %}selected{% endif %}>SUV</option>
-            <option value="Hatchback" {% if selected_filter == 'Hatchback' %}selected{% endif %}>Hatchback</option>
-        </select>
-    </form>
-
-    <!-- Vehicle Table -->
-    <table class="table table-bordered table-hover">
-        <thead class="thead-light">
-            <tr>
-                <th>ID</th>
-                <th>Type</th>
-                <th>Make</th>
-                <th>Model</th>
-                <th>Year</th>
-                <th>Color</th>
-                <th>Rent/Day</th>
-                <th>Availability</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for vehicle in vehicles %}
-            <tr>
-                <td>{{ vehicle.id }}</td>
-                <td>{{ vehicle.type }}</td>
-                <td>{{ vehicle.make }}</td>
-                <td>{{ vehicle.model }}</td>
-                <td>{{ vehicle.year }}</td>
-                <td>{{ vehicle.color }}</td>
-                <td>
-                        <form action="{{ url_for('update_rent', vehicle_id=vehicle.id) }}" method="POST" class="form-inline">
-                            ₹ <span class="mr-2">{{ vehicle.rent_per_day }}</span>
-                            <input type="number" name="new_rent" class="form-control form-control-sm mr-2" placeholder="New Rent" required>
-                            <button type="submit" class="btn btn-success btn-sm">Update</button>
-                        </form>
-                    
-                </td>
-                <td>
-                    {{ vehicle.availability }}
-                    {% if vehicle.availability == 'Unavailable' %}
-                        <form action="{{ url_for('force_available', vehicle_id=vehicle.id) }}" method="POST" class="mt-1">
-                            <button type="submit" class="btn btn-warning btn-sm force-btn">Force Available</button>
-                        </form>
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-
-    <hr>
-
-    <!-- Add New Vehicle Form -->
-    <h3>Add New Vehicle</h3>
-    <form method="POST" action="{{ url_for('add_vehicle') }}">
-        <div class="form-row">
-            <div class="form-group col-md-2">
-                <input type="text" name="id" class="form-control" placeholder="ID" required>
-            </div>
-            <div class="form-group col-md-2">
-                <input type="text" name="type" class="form-control" placeholder="Type" required>
-            </div>
-            <div class="form-group col-md-2">
-                <input type="text" name="make" class="form-control" placeholder="Make" required>
-            </div>
-            <div class="form-group col-md-2">
-                <input type="text" name="model" class="form-control" placeholder="Model" required>
-            </div>
-            <div class="form-group col-md-2">
-                <input type="number" name="year" class="form-control" placeholder="Year" required>
-            </div>
-            <div class="form-group col-md-2">
-                <input type="text" name="color" class="form-control" placeholder="Color" required>
-            </div>
-            <div class="form-group col-md-2">
-                <input type="number" name="rent" class="form-control" placeholder="Rent/Day" required>
-            </div>
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="section-header">Admin Dashboard</h2>
+            <form action="{{ url_for('logout') }}" method="POST">
+                <button type="submit" class="btn btn-danger">Logout</button>
+            </form>
         </div>
-        <button type="submit" class="btn btn-primary">Add Vehicle</button>
-    </form>
 
-    <hr>
-<h3>Current Bookings</h3>
-<table class="table table-bordered table-hover">
-    <thead class="thead-light">
-        <tr>
-            <th>Booking ID</th>
-            <th>User Email</th>
-            <th>Vehicle ID</th>
-            <th>Start Date</th>
-            <th>End Date</th>
-            <th>Status</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for booking in bookings %}
-        <tr>
-            <td>{{ booking.id }}</td>
-            <td>{{ booking.user_email }}</td>
-            <td>{{ booking.vehicle_id }}</td>
-            <td>{{ booking.start_date }}</td>
-            <td>{{ booking.end_date }}</td>
-            <td>{{ booking.status }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+        <!-- Filter Dropdown -->
+        <div class="card card-body">
+            <form method="GET" action="{{ url_for('admin_dashboard') }}" class="form-inline">
+                <label for="filter" class="mr-2">Filter by Vehicle Type:</label>
+                <select name="filter" class="form-control" onchange="this.form.submit()">
+                    <option value="all" {% if selected_filter == 'all' %}selected{% endif %}>All</option>
+                    <option value="Sedan" {% if selected_filter == 'Sedan' %}selected{% endif %}>Sedan</option>
+                    <option value="SUV" {% if selected_filter == 'SUV' %}selected{% endif %}>SUV</option>
+                    <option value="Hatchback" {% if selected_filter == 'Hatchback' %}selected{% endif %}>Hatchback</option>
+                </select>
+            </form>
+        </div>
 
-<hr>
-<h3>Lookup User Bookings</h3>
-<form method="POST" action="{{ url_for('admin_dashboard') }}" class="form-inline mb-3">
-    <input type="text" name="search_email" class="form-control mr-2" placeholder="Enter User Email" required>
-    <button type="submit" class="btn btn-primary">Search</button>
-</form>
+        <!-- Vehicle Table -->
+        <div class="card card-body">
+            <h3 class="section-header">Vehicles</h3>
+            <table class="table table-bordered table-hover">
+                <thead class="thead-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>Type</th>
+                        <th>Make</th>
+                        <th>Model</th>
+                        <th>Year</th>
+                        <th>Color</th>
+                        <th>Rent/Day</th>
+                        <th>Availability</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for vehicle in vehicles %}
+                    <tr>
+                        <td>{{ vehicle.id }}</td>
+                        <td>{{ vehicle.type }}</td>
+                        <td>{{ vehicle.make }}</td>
+                        <td>{{ vehicle.model }}</td>
+                        <td>{{ vehicle.year }}</td>
+                        <td>{{ vehicle.color }}</td>
+                        <td>
+                            <form action="{{ url_for('update_rent', vehicle_id=vehicle.id) }}" method="POST" class="form-inline">
+                                ₹ <span class="mr-2">{{ vehicle.rent_per_day }}</span>
+                                <input type="number" name="new_rent" class="form-control form-control-sm mr-2" placeholder="New Rent" required>
+                                <button type="submit" class="btn btn-success btn-sm">Update</button>
+                            </form>
+                        </td>
+                        <td>
+                            {{ vehicle.availability }}
+                            {% if vehicle.availability == 'Unavailable' %}
+                                <form action="{{ url_for('force_available', vehicle_id=vehicle.id) }}" method="POST" class="mt-1">
+                                    <button type="submit" class="btn btn-warning btn-sm force-btn">Force Available</button>
+                                </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
 
-{% if user_records %}
-    <h5>Bookings for {{ user_records[0].user_email }}:</h5>
-    <table class="table table-sm table-bordered">
-        <thead class="thead-light">
-            <tr>
-                <th>Booking ID</th>
-                <th>Vehicle ID</th>
-                <th>Start Date</th>
-                <th>End Date</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for record in user_records %}
-            <tr>
-                <td>{{ record.id }}</td>
-                <td>{{ record.vehicle_id }}</td>
-                <td>{{ record.start_date }}</td>
-                <td>{{ record.end_date }}</td>
-                <td>{{ record.status }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-{% elif request.method == 'POST' %}
-    <p>No records found for this email.</p>
-{% endif %}
+        <!-- Add Vehicle -->
+        <div class="card card-body">
+            <h3 class="section-header">Add New Vehicle</h3>
+            <form method="POST" action="{{ url_for('add_vehicle') }}">
+                <div class="form-row">
+                    <div class="form-group col-md-2"><input type="text" name="id" class="form-control" placeholder="ID" required></div>
+                    <div class="form-group col-md-2"><input type="text" name="type" class="form-control" placeholder="Type" required></div>
+                    <div class="form-group col-md-2"><input type="text" name="make" class="form-control" placeholder="Make" required></div>
+                    <div class="form-group col-md-2"><input type="text" name="model" class="form-control" placeholder="Model" required></div>
+                    <div class="form-group col-md-2"><input type="number" name="year" class="form-control" placeholder="Year" required></div>
+                    <div class="form-group col-md-2"><input type="text" name="color" class="form-control" placeholder="Color" required></div>
+                    <div class="form-group col-md-2"><input type="number" name="rent" class="form-control" placeholder="Rent/Day" required></div>
+                </div>
+                <button type="submit" class="btn btn-primary">Add Vehicle</button>
+            </form>
+        </div>
 
-<hr>
-<h3>Manage Admins</h3>
+        <!-- Bookings Table -->
+        <div class="card card-body">
+            <h3 class="section-header">Current Bookings</h3>
+            <table class="table table-bordered table-hover">
+                <thead class="thead-light">
+                    <tr>
+                        <th>Booking ID</th>
+                        <th>User Email</th>
+                        <th>Vehicle ID</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for booking in bookings %}
+                    <tr>
+                        <td>{{ booking.id }}</td>
+                        <td>{{ booking.user_email }}</td>
+                        <td>{{ booking.vehicle_id }}</td>
+                        <td>{{ booking.start_date }}</td>
+                        <td>{{ booking.end_date }}</td>
+                        <td>{{ booking.status }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
 
-<!-- Add Admin Form -->
-<form method="POST" action="{{ url_for('add_admin') }}" class="form-inline mb-3">
-    <input type="email" name="email" class="form-control mr-2" placeholder="User Email to Promote" required>
-    <button type="submit" class="btn btn-success">Promote to Admin</button>
-</form>
+        <!-- User Booking Lookup -->
+        <div class="card card-body">
+            <h3 class="section-header">Lookup User Bookings</h3>
+            <form method="POST" action="{{ url_for('admin_dashboard') }}" class="form-inline mb-3">
+                <input type="text" name="search_email" class="form-control mr-2" placeholder="Enter User Email" required>
+                <button type="submit" class="btn btn-primary">Search</button>
+            </form>
 
-<!-- Remove Admin Form -->
-<form method="POST" action="{{ url_for('remove_admin') }}" class="form-inline">
-    <input type="email" name="email" class="form-control mr-2" placeholder="Admin Email to Remove" required>
-    <button type="submit" class="btn btn-danger">Demote from Admin</button>
-</form>
+            {% if user_records %}
+                <h5>Bookings for {{ user_records[0].user_email }}:</h5>
+                <table class="table table-sm table-bordered">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>Booking ID</th>
+                            <th>Vehicle ID</th>
+                            <th>Start Date</th>
+                            <th>End Date</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in user_records %}
+                        <tr>
+                            <td>{{ record.id }}</td>
+                            <td>{{ record.vehicle_id }}</td>
+                            <td>{{ record.start_date }}</td>
+                            <td>{{ record.end_date }}</td>
+                            <td>{{ record.status }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% elif request.method == 'POST' %}
+                <p class="text-muted">No records found for this email.</p>
+            {% endif %}
+        </div>
 
+        <!-- Admin Management -->
+        <div class="card card-body">
+            <h3 class="section-header">Manage Admins</h3>
 
+            <form method="POST" action="{{ url_for('add_admin') }}" class="form-inline mb-3">
+                <input type="email" name="email" class="form-control mr-2" placeholder="User Email to Promote" required>
+                <button type="submit" class="btn btn-success">Promote to Admin</button>
+            </form>
 
+            <form method="POST" action="{{ url_for('remove_admin') }}" class="form-inline">
+                <input type="email" name="email" class="form-control mr-2" placeholder="Admin Email to Remove" required>
+                <button type="submit" class="btn btn-danger">Demote from Admin</button>
+            </form>
+        </div>
+    </div>
 </body>
 </html>

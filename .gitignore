@@ -1,8 +1,0 @@
-.venv/
-__pycache__/
-*.pyc
-instance/
-.env
-.env.*
-.coverage
-.pytest_cache/

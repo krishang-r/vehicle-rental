@@ -1,12 +1,10 @@
-{% extends "layout.html" %} {% block content %}
+{% extends "layout.html" %}
+{% block content %}
 <h2>Available Vehicles</h2>
 <ul>
-  {% for vehicle in vehicles %}
-  <li>
-    {{ vehicle.name }} - {{ vehicle.type }} - ₹{{ vehicle.rent_per_day }}/day {%
-    if not vehicle.is_available %}(Unavailable){% endif %}
-  </li>
-  {% endfor %}
+    {% for vehicle in vehicles %}
+        <li>{{ vehicle.name }} - {{ vehicle.type }} - ₹{{ vehicle.rent_per_day }}/day {% if not vehicle.is_available %}(Unavailable){% endif %}</li>
+    {% endfor %}
 </ul>
 <a href="{{ url_for('dashboard') }}">Back to Dashboard</a>
 {% endblock %}

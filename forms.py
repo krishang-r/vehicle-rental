@@ -11,4 +11,3 @@ class RegisterForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(min=3)])
     password = PasswordField('Password', validators=[DataRequired()])
     submit = SubmitField('Register')
-
