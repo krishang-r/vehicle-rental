@@ -2,12 +2,19 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from functools import wraps
+import os
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.secret_key = 'supersecretkey'
+# Use an environment variable for secret key when available
+app.secret_key = os.environ.get('SECRET_KEY', 'supersecretkey')
 
-# Configure database
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///rental.db'
+# Ensure instance folder exists and use a single DB in instance/
+BASEDIR = os.path.abspath(os.path.dirname(__file__))
+instance_dir = os.path.join(BASEDIR, 'instance')
+os.makedirs(instance_dir, exist_ok=True)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(instance_dir, 'rental.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
@@ -39,8 +46,14 @@ class User(db.Model):
     full_name = db.Column(db.String(150), nullable=False)
     email = db.Column(db.String(150), unique=True, nullable=False)
     username = db.Column(db.String(150), unique=True, nullable=False)
-    password = db.Column(db.String(150), nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(50), nullable=False, default='user')
+
+    def set_password(self, password: str):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password: str) -> bool:
+        return check_password_hash(self.password_hash, password)
 
 class Vehicle(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -84,13 +97,16 @@ def login():
         session.pop('account_created', None)
 
     if request.method == 'POST':
-        user = User.query.filter_by(username=request.form['username'], password=request.form['password']).first()
-        if user:
+        username = request.form.get('username')
+        password = request.form.get('password')
+
+        user = User.query.filter_by(username=username).first()
+        if user and user.check_password(password):
             session['user_id'] = user.id
             session['role'] = user.role
             return redirect(url_for('admin_dashboard' if user.role == 'admin' else 'dashboard'))
 
-        flash("Invalid credentials", 'danger')
+        flash("Invalid username or password", 'danger')
 
     return render_template('login.html')
 
@@ -110,9 +126,10 @@ def register():
             full_name=data['full_name'],
             email=data['email'],
             username=data['username'],
-            password=data['password'],
             role=data.get('role', 'user')
         )
+        # store hashed password
+        user.set_password(data['password'])
         db.session.add(user)
         db.session.commit()
         session['account_created'] = True
@@ -405,9 +422,9 @@ if __name__ == '__main__':
                 full_name="Admin User",
                 email="admin@example.com",
                 username="admin1",
-                password="admin123",
                 role="admin"
             )
+            admin.set_password("admin123")
             db.session.add(admin)
             db.session.commit()
 
