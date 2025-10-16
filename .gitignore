@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+
+# SQLite dbs
+*.db
+instance/*.db
+
+# VSCode settings
+.vscode/
+
+# pytest
+.pytest_cache/
+
+# IDE files
+*.sublime-workspace
+*.sublime-project
