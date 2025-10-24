@@ -75,9 +75,74 @@
     <form method="POST" class="login-container">
         <h2>Vehicle Rental Service</h2>
         <input type="text" name="username" placeholder="Enter your username" required>
-        <input type="password" name="password" placeholder="Enter your password" required>
+        <input id="password" type="password" name="password" placeholder="Enter your password" required>
+        <div id="pwd-meta" style="text-align:left;margin:8px 0 12px;">
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#555;">
+                <input id="showPwd" type="checkbox" style="margin:0;"> Show password
+            </label>
+            <div id="pwd-strength" aria-hidden="true" style="height:8px;background:#eee;border-radius:6px;margin-top:8px;overflow:hidden">
+                <div id="pwd-bar" style="height:100%;width:0%;background:#ff6b6b;transition:width .2s"></div>
+            </div>
+            <div id="pwd-recommendation" style="font-size:12px;color:#444;margin-top:8px;">
+                Tips: Use at least 8 characters, mix uppercase, lowercase, numbers and symbols.
+            </div>
+        </div>
         <button type="submit">Login</button>
         <p>Don't have an account? <a href="{{ url_for('register') }}">Sign Up</a></p>
     </form>
 </body>
+<script>
+// Simple password strength and recommendation for the login form
+;(function(){
+    const pwd = document.getElementById('password');
+    const bar = document.getElementById('pwd-bar');
+    const rec = document.getElementById('pwd-recommendation');
+    const show = document.getElementById('showPwd');
+
+    function scorePassword(s){
+        let score = 0;
+        if(!s) return 0;
+        if(s.length >= 8) score += 1;
+        if(/[a-z]/.test(s) && /[A-Z]/.test(s)) score += 1;
+        if(/\d/.test(s)) score += 1;
+        if(/[^A-Za-z0-9]/.test(s)) score += 1;
+        if(s.length >= 12) score += 1;
+        return score; // 0..5
+    }
+
+    function update(){
+        const v = pwd.value || '';
+        const s = scorePassword(v);
+        const pct = (s/5)*100;
+        bar.style.width = pct + '%';
+        // color scale
+        if(pct < 40) bar.style.background = '#ff6b6b';
+        else if(pct < 70) bar.style.background = '#ffb86b';
+        else bar.style.background = '#4caf50';
+
+        // Recommendation text
+        const tips = [];
+        if(v.length < 8) tips.push('at least 8 characters');
+        if(!/[A-Z]/.test(v)) tips.push('an uppercase letter');
+        if(!/[a-z]/.test(v)) tips.push('a lowercase letter');
+        if(!/\d/.test(v)) tips.push('a number');
+        if(!/[^A-Za-z0-9]/.test(v)) tips.push('a symbol (e.g. !@#$)');
+
+        if(v.length === 0){
+            rec.textContent = 'Tips: Use at least 8 characters, mix uppercase, lowercase, numbers and symbols.';
+        } else if(tips.length === 0){
+            rec.textContent = 'Good password — looks strong.';
+        } else {
+            rec.textContent = 'Consider adding: ' + tips.slice(0,3).join(', ');
+        }
+    }
+
+    pwd.addEventListener('input', update);
+    show.addEventListener('change', function(){
+        pwd.type = this.checked ? 'text' : 'password';
+    });
+    // initialize
+    update();
+})();
+</script>
 </html>
