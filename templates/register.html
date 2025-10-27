@@ -75,13 +75,25 @@
             <input type="email" name="email" required>
 
             <label>Username</label>
-            <input type="text" name="username" required>
+            <input id="username" type="text" name="username" required>
+            <div id="username-help" style="font-size:12px;color:#444;margin-top:6px;">
+                Tip: Choose a username 8–12 characters long. Use letters, numbers or underscores.
+            </div>
 
             <label>Password</label>
-            <input type="password" name="password" required>
+            <input id="password" type="password" name="password" autocomplete="new-password" oncut="return false" onpaste="return false" oncontextmenu="return false" required>
+
+            <div id="pwd-meta" style="text-align:left;margin:8px 0 12px;">
+                <div id="pwd-strength" aria-hidden="true" style="height:8px;background:#eee;border-radius:6px;margin-top:8px;overflow:hidden">
+                    <div id="pwd-bar" style="height:100%;width:0%;background:#ff6b6b;transition:width .2s"></div>
+                </div>
+                <div id="pwd-recommendation" style="font-size:12px;color:#444;margin-top:8px;">
+                    Tips: Use at least 8 characters, mix uppercase, lowercase, numbers and symbols.
+                </div>
+            </div>
 
             <label>Confirm Password</label>
-            <input type="password" name="confirm_password" required>
+            <input id="confirm_password" type="password" name="confirm_password" autocomplete="new-password" oncut="return false" onpaste="return false" oncontextmenu="return false" required>
 
             <button type="submit">Sign Up</button>
         </form>
@@ -90,4 +102,136 @@
         </div>
     </div>
 </body>
+<div id="copy-toast" style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);color:white;padding:10px 16px;border-radius:6px;display:none;z-index:9999;font-size:14px;"></div>
+<script>
+// Password strength and recommendations for registration form
+;(function(){
+    const pwd = document.getElementById('password');
+    const confirm = document.getElementById('confirm_password');
+    const bar = document.getElementById('pwd-bar');
+    const rec = document.getElementById('pwd-recommendation');
+    const toast = document.getElementById('copy-toast');
+    const usernameInput = document.getElementById('username');
+    const usernameHelp = document.getElementById('username-help');
+
+    function scorePassword(s){
+        let score = 0;
+        if(!s) return 0;
+        if(s.length >= 8) score += 1;
+        if(/[a-z]/.test(s) && /[A-Z]/.test(s)) score += 1;
+        if(/\d/.test(s)) score += 1;
+        if(/[^A-Za-z0-9]/.test(s)) score += 1;
+        if(s.length >= 12) score += 1;
+        return score; // 0..5
+    }
+
+    function update(){
+        const v = pwd.value || '';
+        const s = scorePassword(v);
+        const pct = (s/5)*100;
+        bar.style.width = pct + '%';
+        if(pct < 40) bar.style.background = '#ff6b6b';
+        else if(pct < 70) bar.style.background = '#ffb86b';
+        else bar.style.background = '#4caf50';
+
+        const tips = [];
+        if(v.length < 8) tips.push('at least 8 characters');
+        if(!/[A-Z]/.test(v)) tips.push('an uppercase letter');
+        if(!/[a-z]/.test(v)) tips.push('a lowercase letter');
+        if(!/\d/.test(v)) tips.push('a number');
+        if(!/[^A-Za-z0-9]/.test(v)) tips.push('a symbol (e.g. !@#$)');
+
+        if(v.length === 0){
+            rec.textContent = 'Tips: Use at least 8 characters, mix uppercase, lowercase, numbers and symbols.';
+        } else if(tips.length === 0){
+            rec.textContent = 'Good password — looks strong.';
+        } else {
+            rec.textContent = 'Consider adding: ' + tips.slice(0,3).join(', ');
+        }
+    }
+
+    function showToast(msg){
+        if(!toast) return;
+        toast.textContent = msg;
+        toast.style.display = 'block';
+        toast.style.opacity = '1';
+        clearTimeout(showToast._t);
+        showToast._t = setTimeout(()=>{ toast.style.opacity = '0'; setTimeout(()=> toast.style.display='none', 300); }, 2200);
+    }
+
+    function blockClipboardAndMenu(el){
+        if(!el) return;
+
+        // show a toast when user attempts to copy
+        el.addEventListener('copy', function(e){
+            e.preventDefault();
+            showToast('Copying password is not allowed');
+        });
+
+        // silently block other clipboard/context interactions (allow selection so keyboard copy can be intercepted)
+        ['cut','paste','contextmenu'].forEach(evt => {
+            el.addEventListener(evt, function(e){ e.preventDefault(); });
+        });
+    }
+
+    pwd.addEventListener('input', update);
+    update();
+
+    // Prevent copying/cutting/pasting/selection/context menu on password fields
+    blockClipboardAndMenu(pwd);
+    blockClipboardAndMenu(confirm);
+
+    // Also listen at document level to reliably catch keyboard copy (Cmd/Ctrl+C)
+    document.addEventListener('copy', function(e){
+        const active = document.activeElement;
+        if(active === pwd || active === confirm){
+            e.preventDefault();
+            showToast('Copying password is not allowed');
+        }
+    }, true);
+    // additionally catch Cmd/Ctrl+C via keydown (some browsers may not fire copy when selection is empty)
+    document.addEventListener('keydown', function(e){
+        const key = e.key || e.code || '';
+        const isCopy = (key.toLowerCase() === 'c' || key === 'KeyC') && (e.ctrlKey || e.metaKey);
+        const active = document.activeElement;
+        if(isCopy && (active === pwd || active === confirm)){
+            e.preventDefault();
+            showToast('Copying password is not allowed');
+        }
+    }, true);
+
+    // -------- Username availability check (debounced fetch) --------
+    function debounce(fn, delay){
+        let t;
+        return function(...args){
+            clearTimeout(t);
+            t = setTimeout(()=> fn.apply(this, args), delay);
+        };
+    }
+
+    async function checkUsername(username){
+        if(!username){
+            usernameHelp.textContent = 'Tip: Choose a username 8–12 characters long. Use letters, numbers or underscores.';
+            usernameHelp.style.color = '#444';
+            return;
+        }
+        try{
+            const res = await fetch(`/check_username?username=${encodeURIComponent(username)}`);
+            if(!res.ok) throw new Error('Network');
+            const j = await res.json();
+            usernameHelp.textContent = j.message;
+            usernameHelp.style.color = j.available ? '#2e7d32' : '#c62828';
+        }catch(err){
+            usernameHelp.textContent = 'Could not verify username availability';
+            usernameHelp.style.color = '#c62828';
+        }
+    }
+
+    if(usernameInput && usernameHelp){
+        const debounced = debounce((e)=> checkUsername(e.target.value.trim()), 400);
+        usernameInput.addEventListener('input', debounced);
+        usernameInput.addEventListener('blur', (e)=> checkUsername(e.target.value.trim()));
+    }
+})();
+</script>
 </html>

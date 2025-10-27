@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from functools import wraps
@@ -118,14 +118,27 @@ def register():
             flash("Passwords do not match", 'danger')
             return redirect(url_for('register'))
 
-        if User.query.filter((User.username == data['username']) | (User.email == data['email'])).first():
-            flash("Username or Email already exists", 'danger')
+        # Normalize username and basic validation
+        username = data['username'].strip()
+        # Enforce username length between 8 and 12 characters
+        if len(username) < 8 or len(username) > 12:
+            flash("Username must be between 8 and 12 characters long.", 'danger')
+            return redirect(url_for('register'))
+
+        # Check if username is already taken
+        if User.query.filter_by(username=username).first():
+            flash("Username already exists", 'danger')
+            return redirect(url_for('register'))
+
+        # Check if email already exists
+        if User.query.filter_by(email=data['email']).first():
+            flash("Email already exists", 'danger')
             return redirect(url_for('register'))
 
         user = User(
             full_name=data['full_name'],
             email=data['email'],
-            username=data['username'],
+            username=username,
             role=data.get('role', 'user')
         )
         # store hashed password
@@ -136,6 +149,22 @@ def register():
         return redirect(url_for('login'))
 
     return render_template('register.html')
+
+
+@app.route('/check_username')
+def check_username():
+    """AJAX endpoint to check if a username is valid and available.
+    Returns JSON: { available: bool, message: str }
+    """
+    username = request.args.get('username', '').strip()
+    if not username:
+        return jsonify(available=False, message='Enter a username')
+    if len(username) < 8 or len(username) > 12:
+        return jsonify(available=False, message='Username must be 8–12 characters')
+    exists = User.query.filter_by(username=username).first()
+    if exists:
+        return jsonify(available=False, message='Username already taken')
+    return jsonify(available=True, message='Username is available')
 
 @app.route('/dashboard')
 @login_required
