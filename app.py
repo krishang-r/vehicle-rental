@@ -1,4 +1,5 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, get_flashed_messages
+import json
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from functools import wraps
@@ -104,6 +105,9 @@ def login():
         if user and user.check_password(password):
             session['user_id'] = user.id
             session['role'] = user.role
+            # If regular user, require selecting rental dates first
+            if user.role != 'admin' and (not session.get('rental_start') or not session.get('rental_end')):
+                return redirect(url_for('select_dates'))
             return redirect(url_for('admin_dashboard' if user.role == 'admin' else 'dashboard'))
 
         flash("Invalid username or password", 'danger')
@@ -148,7 +152,10 @@ def register():
         session['account_created'] = True
         return redirect(url_for('login'))
 
-    return render_template('register.html')
+    # For GET, gather any flashed messages and pass them into the template
+    msgs = get_flashed_messages(with_categories=True)
+    server_messages_json = json.dumps(msgs)
+    return render_template('register.html', server_messages_json=server_messages_json)
 
 
 @app.route('/check_username')
@@ -169,8 +176,38 @@ def check_username():
 @app.route('/dashboard')
 @login_required
 def dashboard():
+    # Require rental dates in session
+    start = session.get('rental_start')
+    end = session.get('rental_end')
+    if not start or not end:
+        flash('Please select rental dates first.', 'warning')
+        return redirect(url_for('select_dates'))
+
+    try:
+        req_start = datetime.strptime(start, '%Y-%m-%d').date()
+        req_end = datetime.strptime(end, '%Y-%m-%d').date()
+    except Exception:
+        flash('Invalid rental dates in session. Please select again.', 'danger')
+        session.pop('rental_start', None)
+        session.pop('rental_end', None)
+        return redirect(url_for('select_dates'))
+
+    # Find bookings that overlap the requested window and are not cancelled
+    overlapping_bookings = Booking.query.filter(Booking.status != 'Cancelled').all()
+    unavailable_vehicle_ids = set()
+    for b in overlapping_bookings:
+        try:
+            b_start = datetime.strptime(b.start_date, '%Y-%m-%d').date()
+            b_end = datetime.strptime(b.end_date, '%Y-%m-%d').date()
+        except Exception:
+            continue
+        # overlap if booking_start <= req_end and booking_end >= req_start
+        if b_start <= req_end and b_end >= req_start:
+            unavailable_vehicle_ids.add(b.vehicle_id)
+
     vehicles = Vehicle.query.all()
-    return render_template('dashboard.html', vehicles=vehicles)
+    return render_template('dashboard.html', vehicles=vehicles, unavailable_vehicle_ids=unavailable_vehicle_ids,
+                           rental_start=start, rental_end=end)
 
 @app.route('/admin', methods=['GET', 'POST'])
 @login_required
@@ -191,6 +228,31 @@ def admin_dashboard():
 
     return render_template('admin_dashboard.html', vehicles=vehicles, bookings=bookings,
                            selected_filter=selected_filter, user_records=user_records)
+
+
+@app.route('/select-dates', methods=['GET', 'POST'])
+@login_required
+def select_dates():
+    # Allow user to pick rental start and end dates before viewing availability
+    if request.method == 'POST':
+        start = request.form.get('start')
+        end = request.form.get('end')
+        try:
+            s = datetime.strptime(start, '%Y-%m-%d').date()
+            e = datetime.strptime(end, '%Y-%m-%d').date()
+            if e < s:
+                flash('End date must be the same or after start date.', 'danger')
+                return render_template('select_dates.html', rental_start=start, rental_end=end)
+        except Exception:
+            flash('Invalid dates provided. Use YYYY-MM-DD.', 'danger')
+            return render_template('select_dates.html', rental_start=start, rental_end=end)
+
+        session['rental_start'] = start
+        session['rental_end'] = end
+        return redirect(url_for('dashboard'))
+
+    # GET
+    return render_template('select_dates.html', rental_start=session.get('rental_start'), rental_end=session.get('rental_end'))
 
 
 @app.route('/admin/add-vehicle', methods=['GET', 'POST'])
@@ -311,24 +373,51 @@ def view_bookings():
 @login_required
 def book_vehicle(vehicle_id):
     vehicle = Vehicle.query.get_or_404(vehicle_id)
+    # Ensure rental dates are selected in session
+    start = session.get('rental_start')
+    end = session.get('rental_end')
+    if not start or not end:
+        flash('Please select rental dates before booking.', 'warning')
+        return redirect(url_for('select_dates'))
 
-    if vehicle.availability != 'Available':
-        flash('Vehicle is not available.', 'danger')
-        return redirect(url_for('dashboard'))
+    try:
+        req_start = datetime.strptime(start, '%Y-%m-%d').date()
+        req_end = datetime.strptime(end, '%Y-%m-%d').date()
+    except Exception:
+        flash('Invalid rental dates. Please select again.', 'danger')
+        session.pop('rental_start', None)
+        session.pop('rental_end', None)
+        return redirect(url_for('select_dates'))
 
+    # Check for overlapping bookings for this vehicle
+    overlapping = Booking.query.filter(Booking.vehicle_id == vehicle.id, Booking.status != 'Cancelled').all()
+    for b in overlapping:
+        try:
+            b_start = datetime.strptime(b.start_date, '%Y-%m-%d').date()
+            b_end = datetime.strptime(b.end_date, '%Y-%m-%d').date()
+        except Exception:
+            continue
+        if b_start <= req_end and b_end >= req_start:
+            flash('This vehicle is not available for the selected dates.', 'danger')
+            return redirect(url_for('dashboard'))
+
+    # If POST, use submitted or session dates to create booking_info
     if request.method == 'POST':
+        s_date = request.form.get('start_date') or start
+        e_date = request.form.get('end_date') or end
         session['booking_info'] = {
             'vehicle_id': vehicle_id,
             'gov_id': request.form['gov_id'],
             'license': request.form['license'],
             'start_point': request.form['start_point'],
             'end_point': request.form['end_point'],
-            'start_date': request.form['start_date'],
-            'end_date': request.form['end_date']
+            'start_date': s_date,
+            'end_date': e_date
         }
         return redirect(url_for('payment'))
 
-    return render_template('book_vehicle.html', vehicle=vehicle)
+    # Prefill form with rental dates from session
+    return render_template('book_vehicle.html', vehicle=vehicle, prefill_start=start, prefill_end=end)
 
 @app.route('/payment', methods=['GET', 'POST'])
 @login_required

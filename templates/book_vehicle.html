@@ -29,6 +29,9 @@
 <body>
 <div class="container">
     <h2>Book Vehicle - {{ vehicle.make }} {{ vehicle.model }}</h2>
+    {% if prefill_start and prefill_end %}
+    <div class="alert alert-info">Booking for dates <strong>{{ prefill_start }}</strong> to <strong>{{ prefill_end }}</strong>. <a href="{{ url_for('select_dates') }}">Change dates</a></div>
+    {% endif %}
     <form method="POST">
         <div class="mb-3">
             <label for="gov_id" class="form-label">Government ID</label>
@@ -48,11 +51,11 @@
         </div>
         <div class="mb-3">
             <label for="start_date" class="form-label">Start Date</label>
-            <input type="date" class="form-control" id="start_date" name="start_date" required>
+            <input type="date" class="form-control" id="start_date" name="start_date" required value="{{ prefill_start if prefill_start else '' }}">
         </div>
         <div class="mb-3">
             <label for="end_date" class="form-label">End Date</label>
-            <input type="date" class="form-control" id="end_date" name="end_date" required>
+            <input type="date" class="form-control" id="end_date" name="end_date" required value="{{ prefill_end if prefill_end else '' }}">
         </div>
         <button type="submit" class="btn btn-primary">Proceed to Payment</button>
     </form>

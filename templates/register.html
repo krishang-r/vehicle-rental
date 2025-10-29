@@ -1,3 +1,4 @@
+
 <!-- templates/register.html -->
 <!DOCTYPE html>
 <html>
@@ -54,16 +55,40 @@
             text-decoration: none;
             font-weight: bold;
         }
+        /* Toast styles */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: rgba(0,0,0,0.85);
+            color: white;
+            padding: 12px 18px;
+            border-radius: 8px;
+            display: none;
+            z-index: 9999;
+            font-size: 15px;
+            font-weight: 700;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+            transition: transform .28s cubic-bezier(.2,.8,.2,1), opacity .28s linear;
+            opacity: 0;
+            letter-spacing: 0.2px;
+        }
+        .toast.show { display: block; transform: translateX(-50%) translateY(0); opacity: 1; }
+        .toast.success { background: linear-gradient(90deg,#2e7d32,#81c784); color:#05290f; }
+        .toast.danger { background: linear-gradient(90deg,#c62828,#ef9a9a); color:#3b0000; }
+        .toast.warning { background: linear-gradient(90deg,#ffb300,#ffd54f); color:#4b2f00; }
+        .toast.info { background: linear-gradient(90deg,#1976d2,#64b5f6); color:#012945; }
+        @keyframes pulse {
+            0% { box-shadow: 0 6px 18px rgba(0,0,0,0.25); }
+            50% { box-shadow: 0 10px 26px rgba(0,0,0,0.32); }
+            100% { box-shadow: 0 6px 18px rgba(0,0,0,0.25); }
+        }
+        .toast.pulse { animation: pulse 1.6s ease-in-out infinite; }
     </style>
 </head>
 <body>
-    <!-- {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-        {% for category, message in messages %}
-            alert("{{ message }}");
-        {% endfor %}
-    {% endif %}
-    {% endwith %} -->
+    <!-- server flash messages are injected as JSON below for the client to read -->
 
     <div class="container">
         <h2>Create Account</h2>
@@ -102,7 +127,11 @@
         </div>
     </div>
 </body>
-<div id="copy-toast" style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);color:white;padding:10px 16px;border-radius:6px;display:none;z-index:9999;font-size:14px;"></div>
+<div id="copy-toast" class="toast" aria-live="polite" role="status"></div>
+
+<!-- Server-rendered flashed messages (JSON). Provided by the register view as server_messages_json -->
+<script id="server-messages" type="application/json">{{ server_messages_json | safe }}</script>
+
 <script>
 // Password strength and recommendations for registration form
 ;(function(){
@@ -150,13 +179,39 @@
         }
     }
 
-    function showToast(msg){
+    function showToast(msg, category){
         if(!toast) return;
+        category = category || 'info';
+        // set classes
+        toast.className = 'toast ' + (category in {success:1,danger:1,warning:1,info:1} ? category : 'info') + ' pulse';
         toast.textContent = msg;
-        toast.style.display = 'block';
-        toast.style.opacity = '1';
+        // show
+        toast.classList.add('show');
+        // clear previous timer
         clearTimeout(showToast._t);
-        showToast._t = setTimeout(()=>{ toast.style.opacity = '0'; setTimeout(()=> toast.style.display='none', 300); }, 2200);
+        // keep toast visible longer for errors
+        const duration = (category === 'danger' || category === 'warning') ? 4200 : 2600;
+        showToast._t = setTimeout(()=>{
+            toast.classList.remove('show');
+            // remove pulse after hide
+            setTimeout(()=> toast.classList.remove('pulse'), 300);
+        }, duration);
+    }
+
+    // --- server-side flashed messages (rendered by server into JSON) ---
+    // Read JSON from the <script id="server-messages"> tag injected by the view
+    let serverMessages = [];
+    try{
+        const el = document.getElementById('server-messages');
+        if(el && el.textContent){
+            const raw = JSON.parse(el.textContent || '[]');
+            serverMessages = Array.isArray(raw) ? raw.map(function(m){ return { category: m[0], text: m[1] }; }) : [];
+        }
+    }catch(err){ serverMessages = []; }
+
+    // show server messages as toasts on load (errors/success)
+    if (serverMessages && serverMessages.length) {
+        serverMessages.forEach(function(m, i){ setTimeout(function(){ showToast(m.text, m.category); }, i * 700); });
     }
 
     function blockClipboardAndMenu(el){
@@ -165,7 +220,7 @@
         // show a toast when user attempts to copy
         el.addEventListener('copy', function(e){
             e.preventDefault();
-            showToast('Copying password is not allowed');
+            showToast('Copying password is not allowed', 'warning');
         });
 
         // silently block other clipboard/context interactions (allow selection so keyboard copy can be intercepted)
@@ -186,7 +241,7 @@
         const active = document.activeElement;
         if(active === pwd || active === confirm){
             e.preventDefault();
-            showToast('Copying password is not allowed');
+            showToast('Copying password is not allowed', 'warning');
         }
     }, true);
     // additionally catch Cmd/Ctrl+C via keydown (some browsers may not fire copy when selection is empty)
@@ -196,7 +251,7 @@
         const active = document.activeElement;
         if(isCopy && (active === pwd || active === confirm)){
             e.preventDefault();
-            showToast('Copying password is not allowed');
+            showToast('Copying password is not allowed', 'warning');
         }
     }, true);
 

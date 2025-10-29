@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Select Rental Dates</title>
+    <style>
+        body { font-family: Arial, sans-serif; background:#eef7f6; }
+        .box { max-width:420px;margin:60px auto;padding:26px;background:#fff;border-radius:10px;box-shadow:0 8px 20px rgba(0,0,0,0.08); }
+        label{display:block;margin-top:12px;font-weight:600}
+        input[type=date]{width:100%;padding:10px;margin-top:6px;border-radius:6px;border:1px solid #ccc}
+        button{margin-top:18px;width:100%;padding:12px;background:#007bff;color:#fff;border:none;border-radius:6px;font-weight:700}
+        .note{font-size:13px;color:#555;margin-top:8px}
+    </style>
+</head>
+<body>
+  <div class="box">
+    <h2>Select Rental Dates</h2>
+    <form method="POST">
+      <label for="start">Start date</label>
+      <input id="start" name="start" type="date" required value="{{ rental_start if rental_start else '' }}">
+
+      <label for="end">End date</label>
+      <input id="end" name="end" type="date" required value="{{ rental_end if rental_end else '' }}">
+
+      <div class="note">Please choose the dates for which you'd like to rent a vehicle. Availability will be shown for these dates.</div>
+      <button type="submit">Continue</button>
+    </form>
+  </div>
+</body>
+</html>

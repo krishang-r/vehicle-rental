@@ -88,6 +88,9 @@
 <!-- Vehicle Table -->
 <div class="container">
     <h2>Available Vehicles</h2>
+    {% if rental_start and rental_end %}
+    <p class="text-center">Showing availability for <strong>{{ rental_start }}</strong> to <strong>{{ rental_end }}</strong>. <a href="{{ url_for('select_dates') }}">Change dates</a></p>
+    {% endif %}
     <table class="table table-bordered table-hover">
         <thead class="table-light">
             <tr>
@@ -105,7 +108,7 @@
         </thead>
         <tbody>
             {% for vehicle in vehicles %}
-            <tr class="{% if vehicle.availability != 'Available' %}unavailable-row{% endif %}">
+            <tr class="{% if vehicle.id in unavailable_vehicle_ids %}unavailable-row{% endif %}">
                 <td>{{ vehicle.vehicle_id }}</td>
                 <td>{{ vehicle.type }}</td>
                 <td>{{ vehicle.make }}</td>
@@ -114,11 +117,11 @@
                 <td>{{ vehicle.color }}</td>
                 <td>{{ vehicle.seating_capacity }}</td>
                 <td>{{ vehicle.rent_per_day }}</td>
-                <td class="{% if vehicle.availability == 'Available' %}available{% else %}unavailable{% endif %}">
-                    {{ vehicle.availability }}
+                <td class="{% if vehicle.id not in unavailable_vehicle_ids %}available{% else %}unavailable{% endif %}">
+                    {% if vehicle.id not in unavailable_vehicle_ids %}Available{% else %}Unavailable{% endif %}
                 </td>
                 <td>
-                    {% if vehicle.availability == 'Available' %}
+                    {% if vehicle.id not in unavailable_vehicle_ids %}
                     <form method="GET" action="{{ url_for('book_vehicle', vehicle_id=vehicle.id) }}">
                         <button type="submit" class="btn btn-book">Book Now</button>
                     </form>
