@@ -217,6 +217,24 @@ def admin_dashboard():
     vehicles = Vehicle.query.all() if selected_filter == 'all' else Vehicle.query.filter_by(type=selected_filter).all()
     bookings = Booking.query.all()
 
+    # Build a map of vehicle_id -> reason it's unavailable (for admin info)
+    vehicle_reasons = {}
+    for v in vehicles:
+        if v.availability == 'Unavailable':
+            # Try to find the most recent active/non-cancelled booking for this vehicle
+            recent = Booking.query.filter(Booking.vehicle_id == v.id, Booking.status != 'Cancelled').order_by(Booking.id.desc()).first()
+            if recent:
+                try:
+                    u = User.query.get(recent.user_id)
+                    if u:
+                        vehicle_reasons[v.id] = f"Booked by {u.email} from {recent.start_date} to {recent.end_date}"
+                    else:
+                        vehicle_reasons[v.id] = f"Booked from {recent.start_date} to {recent.end_date}"
+                except Exception:
+                    vehicle_reasons[v.id] = f"Booked from {recent.start_date} to {recent.end_date}"
+            else:
+                vehicle_reasons[v.id] = "Marked unavailable (maintenance or admin action)."
+
     user_records = []
     if request.method == 'POST':
         search_email = request.form.get('search_email')
@@ -227,7 +245,8 @@ def admin_dashboard():
             flash("No user found with that email.", "warning")
 
     return render_template('admin_dashboard.html', vehicles=vehicles, bookings=bookings,
-                           selected_filter=selected_filter, user_records=user_records)
+                           selected_filter=selected_filter, user_records=user_records,
+                           vehicle_reasons=vehicle_reasons)
 
 
 @app.route('/select-dates', methods=['GET', 'POST'])

@@ -106,6 +106,13 @@
                                 <form action="{{ url_for('force_available', vehicle_id=vehicle.id) }}" method="POST" class="mt-1">
                                     <button type="submit" class="btn btn-warning btn-sm force-btn">Force Available</button>
                                 </form>
+                                {% set reason = vehicle_reasons.get(vehicle.id) %}
+                                {% if reason %}
+                                    <small class="text-muted d-block mt-1">Reason: {{ reason }}</small>
+                                {% else %}
+                                    <small class="text-muted d-block mt-1">Reason: Marked unavailable (maintenance or admin action).</small>
+                                {% endif %}
+                                <small class="text-warning d-block mt-1"><strong>Note:</strong> Forcing availability will mark the vehicle as Available but will NOT cancel any existing bookings. Please contact the current renter if needed to avoid conflicts.</small>
                             {% endif %}
                         </td>
                     </tr>
@@ -149,7 +156,7 @@
                     {% for booking in bookings %}
                     <tr>
                         <td>{{ booking.id }}</td>
-                        <td>{{ booking.user_email }}</td>
+                        <td>{{ booking.user.email if booking.user else '—' }}</td>
                         <td>{{ booking.vehicle_id }}</td>
                         <td>{{ booking.start_date }}</td>
                         <td>{{ booking.end_date }}</td>
