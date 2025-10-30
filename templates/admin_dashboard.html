@@ -81,7 +81,6 @@
                         <th>Year</th>
                         <th>Color</th>
                         <th>Rent/Day</th>
-                        <th>Availability</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -100,21 +99,7 @@
                                 <button type="submit" class="btn btn-success btn-sm">Update</button>
                             </form>
                         </td>
-                        <td>
-                            {{ vehicle.availability }}
-                            {% if vehicle.availability == 'Unavailable' %}
-                                <form action="{{ url_for('force_available', vehicle_id=vehicle.id) }}" method="POST" class="mt-1">
-                                    <button type="submit" class="btn btn-warning btn-sm force-btn">Force Available</button>
-                                </form>
-                                {% set reason = vehicle_reasons.get(vehicle.id) %}
-                                {% if reason %}
-                                    <small class="text-muted d-block mt-1">Reason: {{ reason }}</small>
-                                {% else %}
-                                    <small class="text-muted d-block mt-1">Reason: Marked unavailable (maintenance or admin action).</small>
-                                {% endif %}
-                                <small class="text-warning d-block mt-1"><strong>Note:</strong> Forcing availability will mark the vehicle as Available but will NOT cancel any existing bookings. Please contact the current renter if needed to avoid conflicts.</small>
-                            {% endif %}
-                        </td>
+                        
                     </tr>
                     {% endfor %}
                 </tbody>
