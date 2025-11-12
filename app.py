@@ -5,6 +5,8 @@ from datetime import datetime
 from functools import wraps
 import os
 from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import joinedload
 
 app = Flask(__name__)
 # Use an environment variable for secret key when available
@@ -391,7 +393,11 @@ def view_bookings():
 @app.route('/book/<int:vehicle_id>', methods=['GET', 'POST'])
 @login_required
 def book_vehicle(vehicle_id):
-    vehicle = Vehicle.query.get_or_404(vehicle_id)
+    vehicle = Vehicle.query.options(joinedload(Vehicle.bookings)).with_for_update().get(vehicle_id)
+    if not vehicle:
+        flash('Vehicle not found.', 'danger')
+        return redirect(url_for('dashboard'))
+
     # Ensure rental dates are selected in session
     start = session.get('rental_start')
     end = session.get('rental_end')
@@ -408,32 +414,40 @@ def book_vehicle(vehicle_id):
         session.pop('rental_end', None)
         return redirect(url_for('select_dates'))
 
-    # Check for overlapping bookings for this vehicle
-    overlapping = Booking.query.filter(Booking.vehicle_id == vehicle.id, Booking.status != 'Cancelled').all()
-    for b in overlapping:
-        try:
-            b_start = datetime.strptime(b.start_date, '%Y-%m-%d').date()
-            b_end = datetime.strptime(b.end_date, '%Y-%m-%d').date()
-        except Exception:
-            continue
-        if b_start <= req_end and b_end >= req_start:
-            flash('This vehicle is not available for the selected dates.', 'danger')
-            return redirect(url_for('dashboard'))
+    # Start a transaction
+    try:
+        with db.session.begin_nested():
+            # Check for overlapping bookings for this vehicle
+            overlapping = Booking.query.filter(
+                Booking.vehicle_id == vehicle.id,
+                Booking.status != 'Cancelled',
+                Booking.start_date <= req_end,
+                Booking.end_date >= req_start
+            ).first()
 
-    # If POST, use submitted or session dates to create booking_info
-    if request.method == 'POST':
-        s_date = request.form.get('start_date') or start
-        e_date = request.form.get('end_date') or end
-        session['booking_info'] = {
-            'vehicle_id': vehicle_id,
-            'gov_id': request.form['gov_id'],
-            'license': request.form['license'],
-            'start_point': request.form['start_point'],
-            'end_point': request.form['end_point'],
-            'start_date': s_date,
-            'end_date': e_date
-        }
-        return redirect(url_for('payment'))
+            if overlapping:
+                flash('This vehicle is not available for the selected dates.', 'danger')
+                return redirect(url_for('dashboard'))
+
+            # If POST, use submitted or session dates to create booking_info
+            if request.method == 'POST':
+                s_date = request.form.get('start_date') or start
+                e_date = request.form.get('end_date') or end
+                session['booking_info'] = {
+                    'vehicle_id': vehicle.id,
+                    'gov_id': request.form['gov_id'],
+                    'license': request.form['license'],
+                    'start_point': request.form['start_point'],
+                    'end_point': request.form['end_point'],
+                    'start_date': s_date,
+                    'end_date': e_date
+                }
+                return redirect(url_for('payment'))
+
+    except IntegrityError:
+        db.session.rollback()
+        flash('A conflict occurred while processing your booking. Please try again.', 'danger')
+        return redirect(url_for('dashboard'))
 
     # Prefill form with rental dates from session
     return render_template('book_vehicle.html', vehicle=vehicle, prefill_start=start, prefill_end=end)
